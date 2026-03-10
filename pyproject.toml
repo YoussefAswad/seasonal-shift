@@ -6,7 +6,13 @@ authors = [{ name = "Youssef Aswad", email = "youssefaswad@gmail.com" }]
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["pyyaml (>=6.0.3,<7.0.0)", "typer (>=0.24.1,<0.25.0)", "rich (>=14.3.3,<15.0.0)", "pydantic (>=2.12.5,<3.0.0)"]
+dependencies = [
+  "pyyaml (>=6.0.3,<7.0.0)",
+  "typer (>=0.24.1,<0.25.0)",
+  "rich (>=14.3.3,<15.0.0)",
+  "pydantic (>=2.12.5,<3.0.0)",
+  "requests (>=2.32.5,<3.0.0)",
+]
 
 
 [build-system]
@@ -26,3 +32,8 @@ packages = [{ include = "seasonal_shift", from = "src" }]
 
 [project.scripts]
 seasonal-shift = "seasonal_shift.main:app"
+
+[tool.basedpyright]
+typeCheckingMode = "recommended"
+reportUnusedImport = "hint"
+reportUnusedCallResult = "none"
