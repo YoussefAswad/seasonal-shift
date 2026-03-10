@@ -1,7 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 from pydantic import BaseModel
+from pydantic.networks import UrlConstraints
+
+
+class SonarrConfig(BaseModel):
+    base_url: UrlConstraints
+    api_key: str
 
 
 class SeasonConfig(BaseModel):
@@ -17,6 +24,7 @@ class ShowConfig(BaseModel):
 
 class Config(BaseModel):
     shows: list[ShowConfig]
+    sonarr: SonarrConfig | None = None
 
 
 class FileOperation(BaseModel):
