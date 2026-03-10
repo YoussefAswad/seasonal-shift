@@ -1,8 +1,6 @@
-Here is a **clean and simple README** suitable for a small CLI utility like this.
-
----
-
 # Seasonal Shift
+
+[![PyPI version](https://badge.fury.io/py/seasonal-shift.svg)](https://badge.fury.io/py/seasonal-shift)
 
 A small CLI tool to **shift season and episode numbers of TV episode files** based on configurable offsets.
 
@@ -38,14 +36,6 @@ Install with pip:
 
 ```bash
 pip install seasonal-shift
-```
-
-Or from source:
-
-```bash
-git clone <repo>
-cd seasonal-shift
-pip install -e .
 ```
 
 ---
@@ -204,15 +194,3 @@ This allows reverting renames even after files are moved.
 # License
 
 MIT License.
-
----
-
-If you want, I can also show a **much nicer README version (~30% better)** that includes:
-
-* CLI help screenshots
-* example before/after directory trees
-* better config explanation
-
-which makes the project look **much more polished on GitHub**.
-
-
