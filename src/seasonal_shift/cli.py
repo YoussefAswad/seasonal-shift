@@ -17,6 +17,7 @@ from .preview import show_preview
 from .scanner import scan_show
 from .sonarr import SonarrClient
 from .undo import run_undo
+from .watcher import run_watch
 
 app = typer.Typer()
 
@@ -241,3 +242,27 @@ def doctor(
     cfg = load_config(config)
 
     run_doctor(cfg.shows)
+
+
+@app.command()
+def watch(
+    config: Annotated[
+        Path | None,
+        typer.Option("--config", "-c", help="Config file (defaults to XDG config directory)"),
+    ] = None,
+) -> None:
+    """
+    Watch show directories and auto-apply episode shifts on new files.
+    """
+    if config is None:
+        config = find_default_config()
+
+    cfg = load_config(config)
+
+    sonarr_cb = None
+    if cfg.sonarr:
+        client = SonarrClient(str(cfg.sonarr.base_url), cfg.sonarr.api_key)
+        sonarr_cfg = cfg.sonarr
+        sonarr_cb = lambda show, ops: _sonarr_update(client, sonarr_cfg, [(show, ops)])  # noqa: E731
+
+    run_watch(cfg, sonarr_cb)
