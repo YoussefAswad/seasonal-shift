@@ -9,6 +9,7 @@ from rich import print
 from watchdog.events import FileCreatedEvent, FileMovedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
+from .cleanup import remove_empty_dirs
 from .executor import execute_operations, get_default_undo_file
 from .models import Config, FileOperation, ShowConfig
 from .planner import plan_operations
@@ -46,6 +47,7 @@ class EpisodeEventHandler(FileSystemEventHandler):
         execute_operations(operations, undo_file)
         for op in operations:
             print(f"[green]Watch:[/] {op.source.name} → {op.destination.name}")
+        remove_empty_dirs(self._show.path)
         if self._sonarr_cb:
             self._sonarr_cb(self._show, operations)
 
