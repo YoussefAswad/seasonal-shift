@@ -2,17 +2,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List
 
 from .models import UndoEntry
 
 
 def run_undo(undo_file: Path) -> None:
 
-    data = json.loads(undo_file.read_text())
+    data = json.loads(undo_file.read_text())  # pyright: ignore[reportAny]
 
-    entries: List[UndoEntry] = [
-        UndoEntry.model_validate(e) for e in data
+    entries: list[UndoEntry] = [
+        UndoEntry.model_validate(e) for e in data  # pyright: ignore[reportAny]
     ]
 
     # reverse order for safety

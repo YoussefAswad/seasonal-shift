@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import List
-
 from rich import print
 from rich.table import Table
 
-from .models import ShowConfig
+from .models import FileOperation, ShowConfig
 from .planner import detect_collisions, detect_duplicates, plan_operations
 from .scanner import scan_show
 
 
-def run_doctor(shows: List[ShowConfig]) -> None:
+def run_doctor(shows: list[ShowConfig]) -> None:
     print("[bold blue]Running diagnostics...[/]\n")
 
     table = Table(title="Show Diagnostics")
@@ -41,7 +38,7 @@ def run_doctor(shows: List[ShowConfig]) -> None:
 
     print("\n[bold blue]Planning operations...[/]\n")
 
-    operations = []
+    operations: list[FileOperation] = []
 
     for show in shows:
         operations.extend(plan_operations(show, scan_show))

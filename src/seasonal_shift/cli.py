@@ -1,42 +1,44 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
+
 import typer
 from rich import print
 
-from .config import load_config, find_default_config
-from .scanner import scan_show
-from .planner import (
-    plan_operations,
-    detect_collisions,
-    detect_duplicates,
-)
-from .preview import show_preview
-from .executor import (
-    execute_operations,
-    get_default_undo_file,
-    find_latest_undo_file,
-)
-from .undo import run_undo
-from .doctor import run_doctor
+from seasonal_shift.models import FileOperation
+
 from .cleanup import cleanup_shows
+from .config import find_default_config, load_config
+from .doctor import run_doctor
+from .executor import execute_operations, find_latest_undo_file, get_default_undo_file
+from .planner import detect_collisions, detect_duplicates, plan_operations
+from .preview import show_preview
+from .scanner import scan_show
+from .undo import run_undo
 
 app = typer.Typer()
 
 
 @app.command()
 def run(
-    config: Path | None = typer.Option(
-        None,
-        "--config",
-        "-c",
-        help="Config file (defaults to XDG config directory)",
-    ),
-    undo_file: Path | None = typer.Option(
-        None,
-        "--undo-file",
-        help="Undo log file (defaults to XDG state directory)",
-    ),
+    config: Annotated[
+        Path | None,
+        typer.Option(
+            None,
+            "--config",
+            "-c",
+            help="Config file (defaults to XDG config directory)",
+        ),
+    ],
+    undo_file: Annotated[
+        Path | None,
+        typer.Option(
+            None,
+            "--undo-file",
+            help="Undo log file (defaults to XDG state directory)",
+        ),
+    ],
 ) -> None:
     """
     Apply episode shifts defined in config.
@@ -47,7 +49,7 @@ def run(
 
     cfg = load_config(config)
 
-    all_operations = []
+    all_operations: list[FileOperation] = []
 
     for show in cfg.shows:
 
@@ -90,10 +92,13 @@ def run(
 
 @app.command()
 def undo(
-    undo_file: Path | None = typer.Argument(
-        None,
-        help="Undo file (defaults to latest operation)",
-    ),
+    undo_file: Annotated[
+        Path | None,
+        typer.Argument(
+            None,
+            help="Undo file (defaults to latest operation)",
+        ),
+    ],
 ) -> None:
     """
     Undo the latest rename operation.
@@ -115,12 +120,15 @@ def undo(
 
 @app.command()
 def doctor(
-    config: Path | None = typer.Option(
-        None,
-        "--config",
-        "-c",
-        help="Config file (defaults to XDG config directory)",
-    ),
+    config: Annotated[
+        Path | None,
+        typer.Option(
+            None,
+            "--config",
+            "-c",
+            help="Config file (defaults to XDG config directory)",
+        ),
+    ],
 ) -> None:
     """
     Run diagnostics on the library and configuration.

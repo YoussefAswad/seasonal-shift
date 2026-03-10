@@ -3,17 +3,15 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 from rich import print
 
 from .models import FileOperation, ShowConfig
 
-
 EP_PATTERN = re.compile(r"S(\d{2})E(\d{2})")
 
 
-def _extract_episode(path: Path) -> Tuple[int, int]:
+def _extract_episode(path: Path) -> tuple[int, int]:
     match = EP_PATTERN.search(path.name)
 
     if not match:
@@ -22,7 +20,7 @@ def _extract_episode(path: Path) -> Tuple[int, int]:
     return int(match.group(1)), int(match.group(2))
 
 
-def show_preview(show: ShowConfig, operations: List[FileOperation]) -> None:
+def show_preview(show: ShowConfig, operations: list[FileOperation]) -> None:
     """
     Display preview grouped by season showing filename changes.
     """
@@ -31,7 +29,7 @@ def show_preview(show: ShowConfig, operations: List[FileOperation]) -> None:
         print(f"[yellow]{show.name}: no changes[/]")
         return
 
-    grouped: Dict[Tuple[int, int], List[FileOperation]] = defaultdict(list)
+    grouped: dict[tuple[int, int], list[FileOperation]] = defaultdict(list)
 
     for op in operations:
         old_s, _ = _extract_episode(op.source)

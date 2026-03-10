@@ -3,10 +3,8 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from .models import FileOperation, UndoEntry
-
 
 APP_NAME: str = "seasonal-shift"
 
@@ -30,7 +28,7 @@ def get_default_undo_file() -> Path:
     return state_dir / f"undo-{timestamp}.json"
 
 
-def find_latest_undo_file() -> Optional[Path]:
+def find_latest_undo_file() -> Path | None:
 
     state_dir: Path = get_state_dir()
 
@@ -70,7 +68,5 @@ def execute_operations(
         )
 
     undo_file.write_text(
-        "[\n"
-        + ",\n".join(e.model_dump_json(indent=2) for e in undo_entries)
-        + "\n]"
+        "[\n" + ",\n".join(e.model_dump_json(indent=2) for e in undo_entries) + "\n]"
     )

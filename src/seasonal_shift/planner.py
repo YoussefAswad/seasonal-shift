@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Callable
 
@@ -8,7 +10,7 @@ from .models import FileOperation, ShowConfig
 
 def plan_operations(
     show: ShowConfig,
-    scanner: Callable[[Path], tuple[Path, object]],
+    scanner: Callable[[Path], Iterable[tuple[Path, re.Match[str]]]],
 ) -> list[FileOperation]:
 
     operations: list[FileOperation] = []
@@ -31,9 +33,7 @@ def plan_operations(
         if new_episode < 1:
             continue
 
-        episode_name: str | None = (
-            ep_name_raw.strip(" - ") if ep_name_raw else None
-        )
+        episode_name: str | None = ep_name_raw.strip(" - ") if ep_name_raw else None
 
         if episode_name:
             new_name: str = (
