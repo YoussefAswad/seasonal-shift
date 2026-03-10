@@ -49,6 +49,8 @@ def plan_operations(
             FileOperation(
                 source=file,
                 destination=new_path,
+                season=season_int,
+                episode=episode_int,
             )
         )
 

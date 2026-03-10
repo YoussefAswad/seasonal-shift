@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import time
 from pathlib import Path
 from typing import Any, NotRequired, Required, TypedDict
 
@@ -52,6 +54,10 @@ class SonarrClient:
         r = self.session.get(
             f"{self.base_url}{endpoint}", **kwargs  # pyright: ignore[reportAny]
         )
+        if not r.ok:
+            # print response content for debugging
+            print(f"Error response from Sonarr: {r.status_code} {r.text}")
+            print(f"Reponse: {json.dumps(r.json(), indent=2)}")
         r.raise_for_status()
         return r.json()  # pyright: ignore[reportAny]
 
@@ -84,6 +90,13 @@ class SonarrClient:
     # ------------------------------------------------------------
     # Episodes
     # ------------------------------------------------------------
+
+    def get_quality_id(self, quality_name: str) -> int:
+        definitions: list[dict[str, Any]] = self._get("/api/v3/qualitydefinition")
+        for defn in definitions:
+            if defn["quality"]["name"] == quality_name:
+                return int(defn["quality"]["id"])
+        raise RuntimeError(f"Quality not found in Sonarr: {quality_name!r}")
 
     def get_episode_id(self, series_id: int, season: int, episode: int) -> int:
         episodes: list[Episode] = self._get(  # pyright: ignore[reportAny]
@@ -175,6 +188,18 @@ class SonarrClient:
         }
 
         return self._post("/api/v3/command", json=payload)
+
+    def wait_for_command(self, command_id: int, *, poll_interval: float = 2.0) -> None:
+        while True:
+            result: dict[str, Any] = self._get(f"/api/v3/command/{command_id}")
+            status: str = result.get("status", "")
+            if status == "completed":
+                return
+            if status == "failed":
+                raise RuntimeError(
+                    f"Sonarr command {command_id} failed: {result.get('message', '')}"
+                )
+            time.sleep(poll_interval)
 
     def refresh_series(self, series_id: int) -> dict[str, Any]:
         payload = {
