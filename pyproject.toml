@@ -1,6 +1,6 @@
 [project]
 name = "seasonal-shift"
-version = "0.1.0"
+version = "1.0.0"
 description = "A tool to rename and move episode files."
 authors = [{ name = "Youssef Aswad", email = "youssefaswad@gmail.com" }]
 license = "MIT"
