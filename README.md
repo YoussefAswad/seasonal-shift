@@ -183,7 +183,7 @@ This allows reverting renames even after files are moved.
 
 # Requirements
 
-* Python 3.10+
+* Python 3.11+
 * typer
 * rich
 * pydantic
