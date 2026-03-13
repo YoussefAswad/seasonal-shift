@@ -28,10 +28,17 @@ class QualityWrapper(TypedDict):
     quality: dict[str, Any]
 
 
+class EpisodeFile(TypedDict):
+    id: int
+    quality: QualityWrapper
+    releaseGroup: str
+
+
 class ManualImportCandidate(TypedDict):
     # fields Sonarr always returns
     path: Required[str]
     quality: Required[QualityWrapper]
+    releaseGroup: NotRequired[str]
 
     # fields we set manually
     seriesId: NotRequired[int]
@@ -91,13 +98,6 @@ class SonarrClient:
     # Episodes
     # ------------------------------------------------------------
 
-    def get_quality_id(self, quality_name: str) -> int:
-        definitions: list[dict[str, Any]] = self._get("/api/v3/qualitydefinition")
-        for defn in definitions:
-            if defn["quality"]["name"] == quality_name:
-                return int(defn["quality"]["id"])
-        raise RuntimeError(f"Quality not found in Sonarr: {quality_name!r}")
-
     def get_episode_id(self, series_id: int, season: int, episode: int) -> int:
         episodes: list[Episode] = self._get(  # pyright: ignore[reportAny]
             "/api/v3/episode",
@@ -113,6 +113,13 @@ class SonarrClient:
 
         raise RuntimeError(f"Episode not found S{season:02}E{episode:02}")
 
+    def get_episode_file(self, episode_id: int) -> EpisodeFile | None:
+        episode: dict[str, Any] = self._get(f"/api/v3/episode/{episode_id}")
+        if not episode.get("hasFile"):
+            return None
+        file_id: int = episode["episodeFileId"]
+        return self._get(f"/api/v3/episodefile/{file_id}")
+
     # ------------------------------------------------------------
     # Manual Import
     # ------------------------------------------------------------
@@ -124,7 +131,8 @@ class SonarrClient:
         season: int,
         episode_id: int,
         *,
-        quality_id: int = 17,
+        quality: QualityWrapper | None = None,
+        release_group: str | None = None,
     ) -> ManualImportCandidate:
 
         path = Path(file_path)
@@ -155,14 +163,10 @@ class SonarrClient:
         candidate["seasonNumber"] = season
         candidate["episodeIds"] = [episode_id]
 
-        candidate["quality"]["quality"]["id"] = quality_id
-
-        # candidate["languages"] = [
-        #     {
-        #         "id": 8,
-        #         "name": "Japanese",
-        #     }
-        # ]
+        if quality is not None:
+            candidate["quality"] = quality
+        if release_group is not None:
+            candidate["releaseGroup"] = release_group
 
         result: list[ManualImportCandidate] = self._post(  # pyright: ignore[reportAny]
             "/api/v3/manualimport",
