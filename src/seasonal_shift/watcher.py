@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import re
+import threading
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
 from rich import print
-from watchdog.events import FileCreatedEvent, FileMovedEvent, FileSystemEventHandler
+from watchdog.events import FileCreatedEvent, FileModifiedEvent, FileMovedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
+from .config import load_config
 from .cleanup import remove_empty_dirs
 from .executor import execute_operations, get_default_undo_file
 from .models import Config, FileOperation, ShowConfig
@@ -52,19 +54,54 @@ class EpisodeEventHandler(FileSystemEventHandler):
             self._sonarr_cb(self._show, operations)
 
 
-def run_watch(
-    cfg: Config,
-    sonarr_cb: Callable[[ShowConfig, list[FileOperation]], Any] | None = None,
-) -> None:
-    observer = Observer()
-    for show in cfg.shows:
-        handler = EpisodeEventHandler(show, sonarr_cb)
-        observer.schedule(handler, str(show.path), recursive=True)
+class _ConfigReloadHandler(FileSystemEventHandler):
+    def __init__(self, config_path: Path, event: threading.Event) -> None:
+        self._config_path = config_path
+        self._event = event
 
-    observer.start()
-    print(f"[blue]Watching {len(cfg.shows)} show(s). Press Ctrl+C to stop.[/]")
-    try:
-        observer.join()
-    except KeyboardInterrupt:
+    def _notify_if_config(self, src_path: str, is_directory: bool) -> None:
+        if not is_directory and Path(src_path) == self._config_path:
+            self._event.set()
+
+    def on_modified(self, event: FileModifiedEvent) -> None:  # type: ignore[override]
+        self._notify_if_config(event.src_path, event.is_directory)
+
+    def on_created(self, event: FileCreatedEvent) -> None:  # type: ignore[override]
+        self._notify_if_config(event.src_path, event.is_directory)
+
+
+def run_watch(
+    config_path: Path,
+    sonarr_cb_factory: Callable[[Config], Callable[[ShowConfig, list[FileOperation]], Any] | None],
+) -> None:
+    while True:
+        try:
+            cfg = load_config(config_path)
+        except Exception as e:
+            print(f"[red]Config error: {e}[/]")
+            return
+
+        reload_event = threading.Event()
+        observer = Observer()
+
+        sonarr_cb = sonarr_cb_factory(cfg)
+        for show in cfg.shows:
+            handler = EpisodeEventHandler(show, sonarr_cb)
+            observer.schedule(handler, str(show.path), recursive=True)
+
+        config_handler = _ConfigReloadHandler(config_path, reload_event)
+        observer.schedule(config_handler, str(config_path.parent), recursive=False)
+
+        observer.start()
+        print(f"[blue]Watching {len(cfg.shows)} show(s). Press Ctrl+C to stop.[/]")
+        try:
+            while not reload_event.wait(0.5):
+                pass
+        except KeyboardInterrupt:
+            observer.stop()
+            observer.join()
+            return
+
         observer.stop()
         observer.join()
+        print("[blue]Config changed, reloading…[/]")

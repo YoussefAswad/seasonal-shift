@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
@@ -7,7 +8,7 @@ from typing import Annotated
 import typer
 from rich import print
 
-from seasonal_shift.models import FileOperation, ShowConfig, SonarrConfig, UndoEntry
+from seasonal_shift.models import Config, FileOperation, ShowConfig, SonarrConfig, UndoEntry
 
 from .cleanup import cleanup_shows
 from .config import find_default_config, load_config
@@ -308,12 +309,11 @@ def watch(
     if config is None:
         config = find_default_config()
 
-    cfg = load_config(config)
-
-    sonarr_cb = None
-    if cfg.sonarr:
+    def sonarr_cb_factory(cfg: Config) -> Callable[[ShowConfig, list[FileOperation]], None] | None:
+        if not cfg.sonarr:
+            return None
         client = SonarrClient(str(cfg.sonarr.base_url), cfg.sonarr.api_key)
         sonarr_cfg = cfg.sonarr
-        sonarr_cb = lambda show, ops: _sonarr_process(client, sonarr_cfg, show, ops)  # noqa: E731
+        return lambda show, ops: _sonarr_process(client, sonarr_cfg, show, ops)  # noqa: E731
 
-    run_watch(cfg, sonarr_cb)
+    run_watch(config, sonarr_cb_factory)
