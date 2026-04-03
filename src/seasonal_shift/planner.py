@@ -22,16 +22,19 @@ def plan_operations(
         season_int: int = int(season)
         episode_int: int = int(episode)
 
-        if season_int not in show.seasons:
+        if season_int == 0:
+            if episode_int not in show.specials:
+                continue
+            new_season: int = 0
+            new_episode: int = show.specials[episode_int]
+        elif season_int not in show.seasons:
             continue
-
-        config = show.seasons[season_int]
-
-        new_season: int = season_int + config.season_offset
-        new_episode: int = episode_int + config.episode_offset
-
-        if new_episode < 1:
-            continue
+        else:
+            config = show.seasons[season_int]
+            new_season = season_int + config.season_offset
+            new_episode = episode_int + config.episode_offset
+            if new_episode < 1:
+                continue
 
         episode_name: str | None = ep_name_raw.strip(" - ") if ep_name_raw else None
 
@@ -42,7 +45,7 @@ def plan_operations(
         else:
             new_name = f"{show_name} - S{new_season:02d}E{new_episode:02d}.{ext}"
 
-        new_dir: Path = show.path / f"Season {new_season}"
+        new_dir: Path = show.path / ("Specials" if new_season == 0 else f"Season {new_season}")
         new_path: Path = new_dir / new_name
 
         operations.append(

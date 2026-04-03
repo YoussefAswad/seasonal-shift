@@ -29,6 +29,7 @@ class ShowConfig(BaseModel):
     name: str
     path: Path
     seasons: dict[int, SeasonConfig]
+    specials: dict[int, int] = {}
 
 
 class Config(BaseModel):
