@@ -20,16 +20,21 @@ class SonarrConfig(BaseModel):
         return self
 
 
+class EpisodeMapping(BaseModel):
+    episode: int
+    season: int | None = None
+
+
 class SeasonConfig(BaseModel):
     season_offset: int = 0
     episode_offset: int = 0
+    episodes: dict[int, EpisodeMapping] = {}
 
 
 class ShowConfig(BaseModel):
     name: str
     path: Path
     seasons: dict[int, SeasonConfig] = {}
-    specials: dict[int, int] = {}
 
 
 class Config(BaseModel):
@@ -47,3 +52,9 @@ class FileOperation(BaseModel):
 class UndoEntry(BaseModel):
     source: Path
     destination: Path
+
+
+class StateEntry(BaseModel):
+    original: Path
+    current: Path
+    run_id: str

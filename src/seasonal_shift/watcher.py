@@ -12,9 +12,9 @@ from watchdog.observers import Observer
 
 from .config import load_config
 from .cleanup import remove_empty_dirs
-from .executor import execute_operations, get_default_undo_file
+from .executor import execute_operations, get_state_file, load_processed
 from .models import Config, FileOperation, ShowConfig
-from .planner import plan_operations
+from .planner import filter_processed, plan_operations, sort_operations
 from .scanner import EPISODE_PATTERN
 
 
@@ -32,6 +32,8 @@ class EpisodeEventHandler(FileSystemEventHandler):
     ) -> None:
         self._show = show
         self._sonarr_cb = sonarr_cb
+        self._in_flight: set[Path] = set()
+        self._lock = threading.Lock()
 
     def on_created(self, event: FileCreatedEvent) -> None:  # type: ignore[override]
         if not event.is_directory:
@@ -42,11 +44,36 @@ class EpisodeEventHandler(FileSystemEventHandler):
             self._handle(Path(event.dest_path))
 
     def _handle(self, path: Path) -> None:
+        with self._lock:
+            if path in self._in_flight:
+                self._in_flight.discard(path)
+                return
+
         operations = plan_operations(self._show, lambda _: _scan_single(path))
         if not operations:
             return
-        undo_file = get_default_undo_file()
-        execute_operations(operations, undo_file)
+
+        try:
+            operations = sort_operations(operations)
+        except ValueError as e:
+            print(f"[yellow]Watch:[/] skipping — {e}")
+            return
+
+        with self._lock:
+            for op in operations:
+                self._in_flight.add(op.destination)
+
+        state_file = get_state_file()
+        processed = load_processed(state_file)
+        filtered = filter_processed(operations, processed)
+        if not filtered:
+            with self._lock:
+                for op in operations:
+                    self._in_flight.discard(op.destination)
+            return
+        operations = filtered
+
+        execute_operations(operations, state_file)
         for op in operations:
             print(f"[green]Watch:[/] {op.source.name} → {op.destination.name}")
         remove_empty_dirs(self._show.path)
@@ -85,15 +112,20 @@ def run_watch(
         observer = Observer()
 
         sonarr_cb = sonarr_cb_factory(cfg)
+        scheduled = 0
         for show in cfg.shows:
+            if not show.path.exists():
+                print(f"[yellow]Watch:[/] skipping [bold]{show.name}[/] — path not found: {show.path}")
+                continue
             handler = EpisodeEventHandler(show, sonarr_cb)
             observer.schedule(handler, str(show.path), recursive=True)
+            scheduled += 1
 
         config_handler = _ConfigReloadHandler(config_path, reload_event)
         observer.schedule(config_handler, str(config_path.parent), recursive=False)
 
         observer.start()
-        print(f"[blue]Watching {len(cfg.shows)} show(s). Press Ctrl+C to stop.[/]")
+        print(f"[blue]Watching {scheduled} show(s). Press Ctrl+C to stop.[/]")
         try:
             while not reload_event.wait(0.5):
                 pass

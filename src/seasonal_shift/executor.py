@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime
 from pathlib import Path
 
-from .models import FileOperation, UndoEntry
+from .models import FileOperation, StateEntry
 
 APP_NAME: str = "seasonal-shift"
 
@@ -18,19 +19,33 @@ def get_state_dir() -> Path:
     return Path.home() / ".local" / "state" / APP_NAME
 
 
-def get_default_undo_file() -> Path:
-    state_dir: Path = get_state_dir()
-
+def get_state_file() -> Path:
+    state_dir = get_state_dir()
     state_dir.mkdir(parents=True, exist_ok=True)
-
-    timestamp: str = datetime.now().strftime("%Y%m%d-%H%M%S")
-
-    return state_dir / f"undo-{timestamp}.json"
+    return state_dir / "state.json"
 
 
-def find_latest_undo_file() -> Path | None:
+def load_state(state_file: Path) -> list[StateEntry]:
+    if not state_file.exists():
+        return []
+    return [StateEntry.model_validate(e) for e in json.loads(state_file.read_text())]  # pyright: ignore[reportAny]
 
-    state_dir: Path = get_state_dir()
+
+def write_state(state_file: Path, entries: list[StateEntry]) -> None:
+    if entries:
+        state_file.write_text(
+            "[\n" + ",\n".join(e.model_dump_json(indent=2) for e in entries) + "\n]"
+        )
+    else:
+        state_file.write_text("[]")
+
+
+def load_processed(state_file: Path) -> set[Path]:
+    return {entry.current for entry in load_state(state_file)}
+
+
+def find_latest_undo_file_legacy() -> Path | None:
+    state_dir = get_state_dir()
 
     if not state_dir.exists():
         return None
@@ -41,32 +56,21 @@ def find_latest_undo_file() -> Path | None:
         reverse=True,
     )
 
-    if not undo_files:
-        return None
-
-    return undo_files[0]
+    return undo_files[0] if undo_files else None
 
 
 def execute_operations(
     operations: list[FileOperation],
-    undo_file: Path,
+    state_file: Path,
+    run_id: str | None = None,
 ) -> None:
-
-    undo_entries: list[UndoEntry] = []
+    run_id = run_id or datetime.now().strftime("%Y%m%d-%H%M%S%f")
+    existing = load_state(state_file)
+    new_entries: list[StateEntry] = []
 
     for op in operations:
-
         op.destination.parent.mkdir(parents=True, exist_ok=True)
-
         op.source.rename(op.destination)
+        new_entries.append(StateEntry(original=op.source, current=op.destination, run_id=run_id))
 
-        undo_entries.append(
-            UndoEntry(
-                source=op.destination,
-                destination=op.source,
-            )
-        )
-
-    undo_file.write_text(
-        "[\n" + ",\n".join(e.model_dump_json(indent=2) for e in undo_entries) + "\n]"
-    )
+    write_state(state_file, existing + new_entries)

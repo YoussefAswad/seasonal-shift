@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-RUN pip install --no-cache-dir seasonal-shift==1.3.0
+RUN pip install --no-cache-dir seasonal-shift==1.4.0
 
 ENV XDG_STATE_HOME=/state
 
